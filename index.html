@@ -625,8 +625,12 @@ body {
             <input type="text" id="eventTitle" required>
         </div>
         <div class="form-group">
-            <label for="eventDate">日付</label>
-            <input type="date" id="eventDate" required>
+            <label for="eventDate">開始日</label>
+            <input type="date" id="eventStartDate" required>
+        </div>
+        <div class="form-group">
+            <label for="eventEndDate">終了日</label>
+            <input type="date" id="eventEndDate" required>
         </div>
         <div class="form-group">
             <label for="eventTime">時間</label>
@@ -897,10 +901,18 @@ function generateCalendar() {
             ${holidayName ? `<div class="holiday-name">${holidayName}</div>` : ''}
         `;
         
-        // その日の予定を表示
+        // その日の予定を表示（複数日イベント対応）
         const dayEvents = events.filter(event => {
-            const eventDate = new Date(event.date);
-            return eventDate.toDateString() === date.toDateString();
+            const eventStartDate = new Date(event.date);
+            const eventEndDate = new Date(event.endDate || event.date);
+            const currentDate = new Date(date);
+            
+            // 日付を00:00:00に設定して比較
+            eventStartDate.setHours(0, 0, 0, 0);
+            eventEndDate.setHours(0, 0, 0, 0);
+            currentDate.setHours(0, 0, 0, 0);
+            
+            return currentDate >= eventStartDate && currentDate <= eventEndDate;
         });
 
         dayEvents.forEach(event => {
@@ -953,7 +965,8 @@ function openAddEventModal(date = null) {
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         const localDateString = `${year}-${month}-${day}`;
-        document.getElementById('eventDate').value = localDateString;
+        document.getElementById('eventStartDate').value = localDateString;
+        document.getElementById('eventEndDate').value = localDateString; // 開始日と終了日を同じにする
     }
     
     editingEventId = null;
@@ -972,8 +985,14 @@ function showEventDetail(event) {
     document.getElementById('detailTitle').textContent = event.title;
     
     const detailContent = document.getElementById('detailContent');
+    // 期間の表示を設定
+    let dateDisplay = new Date(event.date).toLocaleDateString('ja-JP');
+    if (event.endDate && event.endDate !== event.date) {
+        dateDisplay += ` 〜 ${new Date(event.endDate).toLocaleDateString('ja-JP')}`;
+    }
+    
     detailContent.innerHTML = `
-        <p><strong>📅 日付:</strong> ${new Date(event.date).toLocaleDateString('ja-JP')}</p>
+        <p><strong>📅 期間:</strong> ${dateDisplay}</p>
         ${event.time ? `<p><strong>🕐 時間:</strong> ${event.time}</p>` : ''}
         ${event.description ? `<p><strong>📝 詳細:</strong> ${event.description}</p>` : ''}
         ${event.image ? `<img src="${event.image}" class="event-detail-image">` : ''}
@@ -988,7 +1007,8 @@ function editEvent() {
     if (event) {
         document.getElementById('modalTitle').textContent = '予定を編集';
         document.getElementById('eventTitle').value = event.title;
-        document.getElementById('eventDate').value = event.date;
+        document.getElementById('eventStartDate').value = event.date;
+        document.getElementById('eventEndDate').value = event.endDate || event.date; // 終了日があればそれを使用
         document.getElementById('eventTime').value = event.time || '';
         document.getElementById('eventDescription').value = event.description || '';
         
@@ -1068,10 +1088,17 @@ document.getElementById('eventForm').addEventListener('submit', async function(e
 
     try {
         const title = document.getElementById('eventTitle').value;
-        const date = document.getElementById('eventDate').value;
+        const startDate = document.getElementById('eventStartDate').value;
+        const endDate = document.getElementById('eventEndDate').value;
         const time = document.getElementById('eventTime').value;
         const description = document.getElementById('eventDescription').value;
         const imageFile = document.getElementById('eventImage').files[0];
+        
+        // 日付のバリデーション
+        if (new Date(endDate) < new Date(startDate)) {
+            showStatus('終了日は開始日より後の日付を選択してください', 'error');
+            return;
+        }
         
         let imageBase64 = null;
         if (imageFile) {
@@ -1081,7 +1108,8 @@ document.getElementById('eventForm').addEventListener('submit', async function(e
 
         const eventData = {
             title,
-            date,
+            date: startDate, // 開始日を保存
+            endDate: endDate, // 終了日を保存
             time,
             description,
             image: imageBase64,
@@ -1117,6 +1145,18 @@ document.getElementById('eventForm').addEventListener('submit', async function(e
     } finally {
         saveBtn.disabled = false;
         saveBtn.innerHTML = '💾 保存';
+    }
+});
+
+// 開始日が変更されたときに終了日の最小値を更新
+document.getElementById('eventStartDate').addEventListener('change', function() {
+    const startDate = this.value;
+    const endDateInput = document.getElementById('eventEndDate');
+    endDateInput.min = startDate;
+    
+    // 現在の終了日が開始日より前の場合は、開始日と同じにする
+    if (endDateInput.value && endDateInput.value < startDate) {
+        endDateInput.value = startDate;
     }
 });
 
