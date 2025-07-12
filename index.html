@@ -229,6 +229,37 @@ body {
     gap: 5px;
 }
 
+/* 連続開催イベントの色分け */
+.event.multi-day {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+}
+
+.event.multi-day.long {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+}
+
+.event.multi-day.very-long {
+    background: linear-gradient(45deg, #a8edea, #fed6e3);
+    color: #333;
+}
+
+/* 連続開催イベントの開始・中間・終了日のスタイル */
+.event.event-start {
+    border-left: 4px solid #4CAF50;
+    border-radius: 12px 4px 4px 12px;
+}
+
+.event.event-middle {
+    border-radius: 4px;
+    margin-left: 4px;
+    margin-right: 4px;
+}
+
+.event.event-end {
+    border-right: 4px solid #f44336;
+    border-radius: 4px 12px 12px 4px;
+}
+
 .event:hover {
     transform: scale(1.05);
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -546,6 +577,22 @@ body {
         font-size: 10px;
         margin-bottom: 1px;
         border-radius: 8px;
+    }
+    
+    .event.event-start {
+        border-left: 3px solid #4CAF50;
+        border-radius: 8px 2px 2px 8px;
+    }
+    
+    .event.event-middle {
+        border-radius: 2px;
+        margin-left: 2px;
+        margin-right: 2px;
+    }
+    
+    .event.event-end {
+        border-right: 3px solid #f44336;
+        border-radius: 2px 8px 8px 2px;
     }
 
     .event-thumbnail {
@@ -1008,6 +1055,30 @@ function generateCalendar() {
             const eventElement = document.createElement('div');
             eventElement.className = 'event';
             
+            // イベントの期間を判定してクラスを追加
+            const startDate = new Date(event.date);
+            const endDate = new Date(event.endDate || event.date);
+            const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+            const currentDateStr = date.toISOString().split('T')[0];
+            
+            if (daysDiff > 1) {
+                eventElement.classList.add('multi-day');
+                if (daysDiff >= 7) {
+                    eventElement.classList.add('very-long');
+                } else if (daysDiff >= 3) {
+                    eventElement.classList.add('long');
+                }
+                
+                // 開始日と終了日で異なるスタイルを適用
+                if (currentDateStr === event.date) {
+                    eventElement.classList.add('event-start');
+                } else if (currentDateStr === event.endDate) {
+                    eventElement.classList.add('event-end');
+                } else {
+                    eventElement.classList.add('event-middle');
+                }
+            }
+            
             // サムネイル画像を決定（複数画像の場合は最初の1枚）
             let thumbnailSrc = '';
             if (event.images && event.images.length > 0) {
@@ -1016,10 +1087,19 @@ function generateCalendar() {
                 thumbnailSrc = event.image;
             }
             
+            // ツールチップ用の期間情報を生成
+            let tooltipText = event.title;
+            if (daysDiff > 1) {
+                const startDateStr = new Date(event.date).toLocaleDateString('ja-JP');
+                const endDateStr = new Date(event.endDate || event.date).toLocaleDateString('ja-JP');
+                tooltipText += `\n期間: ${startDateStr} 〜 ${endDateStr}`;
+            }
+            
             eventElement.innerHTML = `
                 ${thumbnailSrc ? `<img src="${thumbnailSrc}" class="event-thumbnail">` : ''}
                 <span>${event.title}</span>
             `;
+            eventElement.title = tooltipText;
             eventElement.onclick = (e) => {
                 e.stopPropagation();
                 showEventDetail(event);
