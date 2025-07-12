@@ -1011,7 +1011,13 @@ function generateCalendar() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    for (let i = 0; i < 42; i++) {
+    // 必要な週数を計算（月の終わりまで適切に表示）
+    const endDate = new Date(lastDay);
+    endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
+    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    const weeksNeeded = Math.min(6, Math.ceil(totalDays / 7));
+
+    for (let i = 0; i < weeksNeeded * 7; i++) {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
         
