@@ -605,7 +605,7 @@ async function saveEventToAPI(eventData, isUpdate = false) {
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        console.log(response);
+
         const result = await response.json();
         return result;
     } catch (error) {
@@ -747,7 +747,12 @@ function openAddEventModal(date = null) {
     document.getElementById('imagePreview').style.display = 'none';
     
     if (date) {
-        document.getElementById('eventDate').value = date.toISOString().split('T')[0];
+        // ローカル日付をYYYY-MM-DD形式に変換（時差を考慮）
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const localDateString = `${year}-${month}-${day}`;
+        document.getElementById('eventDate').value = localDateString;
     }
     
     editingEventId = null;
@@ -890,6 +895,8 @@ document.getElementById('eventForm').addEventListener('submit', async function(e
                 const eventIndex = events.findIndex(e => e.id === editingEventId);
                 events[eventIndex] = result.event || eventData;
                 showStatus('予定を更新しました', 'success');
+                closeModal();
+                generateCalendar();
             }
         } else {
             // 新規追加
@@ -898,12 +905,9 @@ document.getElementById('eventForm').addEventListener('submit', async function(e
             if (result) {
                 events.push(result.event || eventData);
                 showStatus('予定を追加しました', 'success');
+                closeModal();
+                generateCalendar();
             }
-        }
-
-        if (result) {
-            closeModal();
-            generateCalendar();
         }
 
     } catch (error) {
