@@ -249,9 +249,21 @@ async function createEvent(eventData) {
         const eventId = eventData.id || Date.now().toString();
         
         // 画像がある場合はS3にアップロード
-        let imageUrl = null;
-        if (eventData.image) {
-            imageUrl = await uploadImageToS3(eventData.image, eventId);
+        let imageUrls = [];
+        if (eventData.images && eventData.images.length > 0) {
+            // 複数画像の場合
+            for (let i = 0; i < eventData.images.length; i++) {
+                const imageUrl = await uploadImageToS3(eventData.images[i], `${eventId}_${i}`);
+                if (imageUrl) {
+                    imageUrls.push(imageUrl);
+                }
+            }
+        } else if (eventData.image) {
+            // 単一画像の場合（旧形式対応）
+            const imageUrl = await uploadImageToS3(eventData.image, eventId);
+            if (imageUrl) {
+                imageUrls.push(imageUrl);
+            }
         }
         
         // 新しいイベントオブジェクト
@@ -262,7 +274,7 @@ async function createEvent(eventData) {
             endDate: eventData.endDate || eventData.date, // 終了日を追加
             time: eventData.time || '',
             description: eventData.description || '',
-            image: imageUrl,
+            images: imageUrls, // 複数画像を配列で保存
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -320,14 +332,22 @@ async function updateEvent(eventId, eventData) {
         }
         
         // 画像処理
-        let imageUrl = existingEvent.image;
-        if (eventData.image && eventData.image !== existingEvent.image) {
+        let imageUrls = existingEvent.images || [];
+        if (eventData.images && eventData.images.length > 0) {
             // 古い画像を削除
-            if (existingEvent.image) {
-                await deleteImageFromS3(existingEvent.image);
+            if (existingEvent.images) {
+                for (let oldImageUrl of existingEvent.images) {
+                    await deleteImageFromS3(oldImageUrl);
+                }
             }
             // 新しい画像をアップロード
-            imageUrl = await uploadImageToS3(eventData.image, eventId);
+            imageUrls = [];
+            for (let i = 0; i < eventData.images.length; i++) {
+                const imageUrl = await uploadImageToS3(eventData.images[i], `${eventId}_${i}`);
+                if (imageUrl) {
+                    imageUrls.push(imageUrl);
+                }
+            }
         }
         
         // イベントを更新
@@ -338,7 +358,7 @@ async function updateEvent(eventId, eventData) {
             endDate: eventData.endDate || existingEvent.endDate || eventData.date || existingEvent.date, // 終了日を更新
             time: eventData.time !== undefined ? eventData.time : existingEvent.time,
             description: eventData.description !== undefined ? eventData.description : existingEvent.description,
-            image: imageUrl,
+            images: imageUrls, // 複数画像を配列で保存
             updatedAt: new Date().toISOString()
         };
         
@@ -382,7 +402,12 @@ async function deleteEvent(eventId) {
         const eventToDelete = events[eventIndex];
         
         // 関連画像を削除
-        if (eventToDelete.image) {
+        if (eventToDelete.images && eventToDelete.images.length > 0) {
+            for (let imageUrl of eventToDelete.images) {
+                await deleteImageFromS3(imageUrl);
+            }
+        } else if (eventToDelete.image) {
+            // 旧形式の単一画像対応
             await deleteImageFromS3(eventToDelete.image);
         }
         

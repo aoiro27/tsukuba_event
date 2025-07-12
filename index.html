@@ -336,12 +336,75 @@ body {
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
+.image-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.image-preview-item {
+    position: relative;
+    display: inline-block;
+}
+
+.image-preview-item img {
+    max-width: 150px;
+    max-height: 150px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    object-fit: cover;
+}
+
+.image-preview-item .remove-image {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.image-preview-item .remove-image:hover {
+    background: #ff5252;
+}
+
 .event-detail-image {
     max-width: 100%;
     max-height: 400px;
     border-radius: 15px;
     box-shadow: 0 8px 25px rgba(0,0,0,0.1);
     margin: 20px 0;
+}
+
+.event-detail-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.event-detail-images img {
+    width: 100%;
+    max-height: 300px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.event-detail-images img:hover {
+    transform: scale(1.05);
 }
 
 /* イベント詳細内のリンクスタイル */
@@ -672,11 +735,11 @@ body {
             <textarea id="eventDescription" rows="3"></textarea>
         </div>
         <div class="form-group">
-            <label>画像を添付</label>
-            <div class="image-upload" onclick="document.getElementById('eventImage').click()">
+            <label>画像を添付（複数選択可能）</label>
+            <div class="image-upload" onclick="document.getElementById('eventImages').click()">
                 <p>📷 クリックまたはドラッグ＆ドロップで画像を選択</p>
-                <input type="file" id="eventImage" accept="image/*" style="display: none;">
-                <img id="imagePreview" class="image-preview" style="display: none;">
+                <input type="file" id="eventImages" accept="image/*" multiple style="display: none;">
+                <div id="imagePreviewContainer" class="image-preview-container"></div>
             </div>
         </div>
         <div class="form-group">
@@ -944,8 +1007,17 @@ function generateCalendar() {
         dayEvents.forEach(event => {
             const eventElement = document.createElement('div');
             eventElement.className = 'event';
+            
+            // サムネイル画像を決定（複数画像の場合は最初の1枚）
+            let thumbnailSrc = '';
+            if (event.images && event.images.length > 0) {
+                thumbnailSrc = event.images[0];
+            } else if (event.image) {
+                thumbnailSrc = event.image;
+            }
+            
             eventElement.innerHTML = `
-                ${event.image ? `<img src="${event.image}" class="event-thumbnail">` : ''}
+                ${thumbnailSrc ? `<img src="${thumbnailSrc}" class="event-thumbnail">` : ''}
                 <span>${event.title}</span>
             `;
             eventElement.onclick = (e) => {
@@ -979,7 +1051,12 @@ function nextMonth() {
 function openAddEventModal(date = null) {
     document.getElementById('modalTitle').textContent = '予定を追加';
     document.getElementById('eventForm').reset();
-    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('imagePreviewContainer').innerHTML = '';
+    
+    // 保存ボタンの状態をリセット
+    const saveBtn = document.getElementById('saveEventBtn');
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '💾 保存';
     
     if (date) {
         // ローカル日付をYYYY-MM-DD形式に変換（時差を考慮）
@@ -997,6 +1074,11 @@ function openAddEventModal(date = null) {
 
 function closeModal() {
     document.getElementById('eventModal').style.display = 'none';
+    
+    // 保存ボタンの状態をリセット
+    const saveBtn = document.getElementById('saveEventBtn');
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '💾 保存';
 }
 
 function closeDetailModal() {
@@ -1052,13 +1134,30 @@ function showEventDetail(event) {
         `;
     }
     
+    // 画像表示HTMLを生成
+    let imagesHtml = '';
+    if (event.images && event.images.length > 0) {
+        if (event.images.length === 1) {
+            imagesHtml = `<img src="${event.images[0]}" class="event-detail-image">`;
+        } else {
+            imagesHtml = '<div class="event-detail-images">';
+            event.images.forEach(imageSrc => {
+                imagesHtml += `<img src="${imageSrc}" alt="イベント画像">`;
+            });
+            imagesHtml += '</div>';
+        }
+    } else if (event.image) {
+        // 旧形式の単一画像対応
+        imagesHtml = `<img src="${event.image}" class="event-detail-image">`;
+    }
+    
     detailContent.innerHTML = `
         <div class="detail-section">
             <strong>📅 期間:</strong> ${dateDisplay}
         </div>
         ${event.time ? `<div class="detail-section"><strong>🕐 時間:</strong> ${event.time}</div>` : ''}
         ${descriptionHtml}
-        ${event.image ? `<img src="${event.image}" class="event-detail-image">` : ''}
+        ${imagesHtml}
     `;
     
     editingEventId = event.id;
@@ -1075,10 +1174,26 @@ function editEvent() {
         document.getElementById('eventTime').value = event.time || '';
         document.getElementById('eventDescription').value = event.description || '';
         
-        if (event.image) {
-            document.getElementById('imagePreview').src = event.image;
-            document.getElementById('imagePreview').style.display = 'block';
+        // 既存の画像を表示
+        const container = document.getElementById('imagePreviewContainer');
+        container.innerHTML = '';
+        
+        if (event.images && event.images.length > 0) {
+            event.images.forEach((imageSrc, index) => {
+                const previewItem = document.createElement('div');
+                previewItem.className = 'image-preview-item';
+                previewItem.innerHTML = `
+                    <img src="${imageSrc}" alt="プレビュー">
+                    <button type="button" class="remove-image" onclick="removeImage(this)">×</button>
+                `;
+                container.appendChild(previewItem);
+            });
         }
+        
+        // 保存ボタンの状態をリセット
+        const saveBtn = document.getElementById('saveEventBtn');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '💾 保存';
         
         closeDetailModal();
         document.getElementById('eventModal').style.display = 'block';
@@ -1096,19 +1211,32 @@ async function deleteEvent() {
     }
 }
 
-// 画像アップロード処理
-document.getElementById('eventImage').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById('imagePreview');
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    }
+// 複数画像アップロード処理
+document.getElementById('eventImages').addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    const container = document.getElementById('imagePreviewContainer');
+    
+    files.forEach((file, index) => {
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewItem = document.createElement('div');
+                previewItem.className = 'image-preview-item';
+                previewItem.innerHTML = `
+                    <img src="${e.target.result}" alt="プレビュー">
+                    <button type="button" class="remove-image" onclick="removeImage(this)">×</button>
+                `;
+                container.appendChild(previewItem);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
 });
+
+// 画像削除処理
+function removeImage(button) {
+    button.parentElement.remove();
+}
 
 // ドラッグ＆ドロップ処理
 const imageUpload = document.querySelector('.image-upload');
@@ -1125,20 +1253,24 @@ imageUpload.addEventListener('drop', function(e) {
     e.preventDefault();
     this.classList.remove('dragover');
     
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        const file = files[0];
+    const files = Array.from(e.dataTransfer.files);
+    const container = document.getElementById('imagePreviewContainer');
+    
+    files.forEach((file, index) => {
         if (file.type.startsWith('image/')) {
-            document.getElementById('eventImage').files = files;
             const reader = new FileReader();
             reader.onload = function(e) {
-                const preview = document.getElementById('imagePreview');
-                preview.src = e.target.result;
-                preview.style.display = 'block';
+                const previewItem = document.createElement('div');
+                previewItem.className = 'image-preview-item';
+                previewItem.innerHTML = `
+                    <img src="${e.target.result}" alt="プレビュー">
+                    <button type="button" class="remove-image" onclick="removeImage(this)">×</button>
+                `;
+                container.appendChild(previewItem);
             };
             reader.readAsDataURL(file);
         }
-    }
+    });
 });
 
 // フォーム送信処理
@@ -1155,18 +1287,27 @@ document.getElementById('eventForm').addEventListener('submit', async function(e
         const endDate = document.getElementById('eventEndDate').value;
         const time = document.getElementById('eventTime').value;
         const description = document.getElementById('eventDescription').value;
-        const imageFile = document.getElementById('eventImage').files[0];
+        
+        // プレビューから画像データを取得
+        const imageElements = document.querySelectorAll('#imagePreviewContainer img');
+        const imageFiles = document.getElementById('eventImages').files;
         
         // 日付のバリデーション
         if (new Date(endDate) < new Date(startDate)) {
             showStatus('終了日は開始日より後の日付を選択してください', 'error');
+            // バリデーションエラー時はボタンを元に戻す
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '💾 保存';
             return;
         }
         
-        let imageBase64 = null;
-        if (imageFile) {
+        let imagesBase64 = [];
+        if (imageElements.length > 0) {
             showStatus('画像を処理中...', 'loading');
-            imageBase64 = await fileToBase64(imageFile);
+            // プレビュー画像からBase64データを取得
+            for (let img of imageElements) {
+                imagesBase64.push(img.src);
+            }
         }
 
         const eventData = {
@@ -1175,7 +1316,7 @@ document.getElementById('eventForm').addEventListener('submit', async function(e
             endDate: endDate, // 終了日を保存
             time,
             description,
-            image: imageBase64,
+            images: imagesBase64, // 複数画像を配列で保存
             timestamp: new Date().toISOString()
         };
 
