@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>予定公開カレンダー</title>
+<title>つくばイベントカレンダー</title>
 <style>
 * {
     margin: 0;
@@ -211,6 +211,8 @@ body {
 .day-number {
     font-weight: 600;
     margin-bottom: 5px;
+    text-align: left;
+    width: 100%;
 }
 
 .event {
@@ -342,6 +344,23 @@ body {
     margin: 20px 0;
 }
 
+/* イベント詳細内のリンクスタイル */
+#detailContent a {
+    color: #667eea;
+    text-decoration: underline;
+    transition: all 0.3s ease;
+    word-break: break-all;
+}
+
+#detailContent a:hover {
+    color: #4facfe;
+    text-decoration: none;
+}
+
+#detailContent a:visited {
+    color: #764ba2;
+}
+
 .event-actions {
     display: flex;
     gap: 10px;
@@ -427,6 +446,8 @@ body {
     .calendar-day {
         min-height: 60px;
         padding: 4px 2px;
+        align-items: flex-start;
+        justify-content: flex-start;
     }
 
     .day-header {
@@ -537,6 +558,8 @@ body {
     .calendar-day {
         position: relative;
         cursor: pointer;
+        align-items: flex-start;
+        justify-content: flex-start;
     }
 
     /* スクロール改善 */
@@ -591,18 +614,9 @@ body {
 <body>
 <div class="container">
 <div class="header">
-    <h1>📅 予定公開カレンダー</h1>
-    <p>Lambda API連携で予定を保存・共有</p>
+    <h1>📅 つくばイベントカレンダー</h1>
 </div>
-
-
-
 <div id="statusMessage" class="status" style="display: none;"></div>
-
-<div class="controls">
-    <button class="btn btn-primary" onclick="openAddEventModal()" id="addEventBtn">📝 予定を追加</button>
-    <button class="btn btn-secondary" onclick="goToToday()">📍 今日へ移動</button>
-</div>
 
 <div class="calendar-container">
     <div class="calendar-header">
@@ -753,8 +767,6 @@ function initializeAPI() {
     loadEventsFromAPI();
 }
 
-
-
 // ステータスメッセージの表示
 function showStatus(message, type) {
     const statusEl = document.getElementById('statusMessage');
@@ -769,7 +781,6 @@ function showStatus(message, type) {
 
 // APIからイベントデータを読み込み
 async function loadEventsFromAPI() {
-    showStatus('データを読み込み中...', 'loading');
 
     try {
         const response = await fetch(`${API_ENDPOINT}/events`, {
@@ -786,10 +797,8 @@ async function loadEventsFromAPI() {
         const data = await response.json();
         events = data.events || [];
         generateCalendar();
-        showStatus('データを読み込みました', 'success');
     } catch (error) {
         console.error('データの読み込みに失敗:', error);
-        showStatus(`データの読み込みに失敗: ${error.message}`, 'error');
     }
 }
 
@@ -812,7 +821,7 @@ async function saveEventToAPI(eventData, isUpdate = false) {
         }
 
         const result = await response.json();
-        return result;
+        return result && (result.success !== false); // 成功フラグがある場合はそれをチェック
     } catch (error) {
         console.error('データの保存に失敗:', error);
         showStatus(`保存に失敗: ${error.message}`, 'error');
@@ -949,10 +958,6 @@ function nextMonth() {
     generateCalendar();
 }
 
-function goToToday() {
-    currentDate = new Date();
-    generateCalendar();
-}
 
 function openAddEventModal(date = null) {
     document.getElementById('modalTitle').textContent = '予定を追加';
@@ -991,10 +996,42 @@ function showEventDetail(event) {
         dateDisplay += ` 〜 ${new Date(event.endDate).toLocaleDateString('ja-JP')}`;
     }
     
+    // URLをリンクに変換する関数
+    function convertUrlsToLinks(text) {
+        // より包括的なURL正規表現（http/https、www、メールアドレスなど）
+        const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+        return text.replace(urlRegex, function(match) {
+            let url = match;
+            let displayText = match;
+            
+            // wwwで始まる場合はhttp://を追加
+            if (match.startsWith('www.')) {
+                url = 'http://' + match;
+            }
+            // メールアドレスの場合
+            else if (match.includes('@')) {
+                url = 'mailto:' + match;
+                displayText = match;
+            }
+            // 長いURLの場合は短縮表示
+            else if (match.length > 50) {
+                displayText = match.substring(0, 47) + '...';
+            }
+            
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${displayText}</a>`;
+        });
+    }
+    
+    // 詳細テキストを処理
+    let descriptionHtml = '';
+    if (event.description) {
+        descriptionHtml = `<p><strong>📝 詳細:</strong> ${convertUrlsToLinks(event.description)}</p>`;
+    }
+    
     detailContent.innerHTML = `
         <p><strong>📅 期間:</strong> ${dateDisplay}</p>
         ${event.time ? `<p><strong>🕐 時間:</strong> ${event.time}</p>` : ''}
-        ${event.description ? `<p><strong>📝 詳細:</strong> ${event.description}</p>` : ''}
+        ${descriptionHtml}
         ${event.image ? `<img src="${event.image}" class="event-detail-image">` : ''}
     `;
     
@@ -1126,6 +1163,8 @@ document.getElementById('eventForm').addEventListener('submit', async function(e
                 showStatus('予定を更新しました', 'success');
                 closeModal();
                 generateCalendar();
+            } else {
+                showStatus('予定の更新に失敗しました', 'error');
             }
         } else {
             // 新規追加
@@ -1136,15 +1175,22 @@ document.getElementById('eventForm').addEventListener('submit', async function(e
                 showStatus('予定を追加しました', 'success');
                 closeModal();
                 generateCalendar();
+            } else {
+                showStatus('予定の追加に失敗しました', 'error');
             }
         }
 
     } catch (error) {
         console.error('保存エラー:', error);
         showStatus('保存に失敗しました: ' + error.message, 'error');
-    } finally {
+        // エラーが発生した場合でもボタンを元に戻す
         saveBtn.disabled = false;
         saveBtn.innerHTML = '💾 保存';
+    } finally {
+        // 成功した場合のみボタンを元に戻す（エラーの場合は上記で処理済み）
+        if (!saveBtn.disabled) {
+            saveBtn.innerHTML = '💾 保存';
+        }
     }
 });
 
@@ -1167,4 +1213,5 @@ window.addEventListener('load', function() {
 });
 </script>
 </body>
+</html>
 </html>
