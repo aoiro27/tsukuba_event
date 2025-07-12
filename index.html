@@ -159,6 +159,10 @@ body {
     position: relative;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
 }
 
 .calendar-day:hover {
@@ -370,19 +374,216 @@ body {
 }
 
 @media (max-width: 768px) {
-    .calendar-grid {
+    .container {
+        padding: 10px;
+    }
+
+    .header h1 {
+        font-size: 1.8em;
+        margin-bottom: 8px;
+    }
+
+    .header p {
         font-size: 14px;
+    }
+
+    .controls {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .btn {
+        width: 100%;
+        padding: 15px 20px;
+        font-size: 16px;
+    }
+
+    .calendar-container {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .calendar-header {
+        margin-bottom: 15px;
+    }
+
+    .calendar-title {
+        font-size: 1.2em;
+    }
+
+    .nav-btn {
+        font-size: 24px;
+        padding: 8px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .calendar-grid {
+        font-size: 12px;
+        gap: 1px;
     }
     
     .calendar-day {
-        min-height: 80px;
-        padding: 4px;
+        min-height: 60px;
+        padding: 4px 2px;
+    }
+
+    .day-header {
+        padding: 10px 4px;
+        font-size: 12px;
+        min-height: auto;
+    }
+
+    .day-number {
+        font-size: 14px;
+        margin-bottom: 2px;
+    }
+
+    .event {
+        padding: 2px 4px;
+        font-size: 10px;
+        margin-bottom: 1px;
+        border-radius: 8px;
+    }
+
+    .event-thumbnail {
+        width: 12px;
+        height: 12px;
+    }
+
+    .holiday-name {
+        font-size: 8px;
+        margin-top: 1px;
     }
     
     .modal-content {
         width: 95%;
-        margin: 10% auto;
-        padding: 20px;
+        margin: 5% auto;
+        padding: 20px 15px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal h2 {
+        font-size: 1.3em;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        padding: 12px;
+        font-size: 16px; /* iOS zoomを防ぐため16px以上 */
+        border-radius: 8px;
+    }
+
+    .image-upload {
+        padding: 15px;
+        border-radius: 8px;
+    }
+
+    .image-upload p {
+        font-size: 14px;
+    }
+
+    .image-preview {
+        max-width: 150px;
+        max-height: 150px;
+    }
+
+    .event-detail-image {
+        max-height: 250px;
+    }
+
+    .event-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .event-actions .btn {
+        width: 100%;
+        margin: 0;
+    }
+
+    .close {
+        font-size: 24px;
+        top: 15px;
+        right: 15px;
+        position: absolute;
+    }
+
+    /* タッチターゲットの最小サイズを確保 */
+    .calendar-day,
+    .event,
+    .btn,
+    .nav-btn {
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+
+    .calendar-day {
+        position: relative;
+        cursor: pointer;
+    }
+
+    /* スクロール改善 */
+    .modal {
+        padding: 0;
+    }
+
+    /* 横スクロール防止 */
+    body {
+        overflow-x: hidden;
+    }
+}
+
+@media (max-width: 480px) {
+    .header h1 {
+        font-size: 1.5em;
+    }
+
+    .calendar-day {
+        min-height: 50px;
+        padding: 2px 1px;
+    }
+
+    .day-number {
+        font-size: 12px;
+    }
+
+    .event {
+        font-size: 9px;
+        padding: 1px 3px;
+    }
+
+    .event-thumbnail {
+        width: 10px;
+        height: 10px;
+    }
+
+    .holiday-name {
+        font-size: 7px;
+    }
+
+    .modal-content {
+        padding: 15px 10px;
+    }
+
+    .calendar-title {
+        font-size: 1em;
     }
 }
 </style>
