@@ -361,6 +361,23 @@ body {
     color: #764ba2;
 }
 
+/* イベント詳細内のスタイル */
+#detailContent .detail-section {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+#detailContent .detail-text {
+    margin-top: 8px;
+    white-space: pre-line;
+    word-wrap: break-word;
+}
+
+#detailContent br {
+    display: block;
+    margin: 2px 0;
+}
+
 .event-actions {
     display: flex;
     gap: 10px;
@@ -996,11 +1013,11 @@ function showEventDetail(event) {
         dateDisplay += ` 〜 ${new Date(event.endDate).toLocaleDateString('ja-JP')}`;
     }
     
-    // URLをリンクに変換する関数
-    function convertUrlsToLinks(text) {
-        // より包括的なURL正規表現（http/https、www、メールアドレスなど）
+    // テキストをHTMLに変換する関数（改行とURLを処理）
+    function convertTextToHtml(text) {
+        // URLをリンクに変換（改行前に行う）
         const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
-        return text.replace(urlRegex, function(match) {
+        let html = text.replace(urlRegex, function(match) {
             let url = match;
             let displayText = match;
             
@@ -1020,17 +1037,26 @@ function showEventDetail(event) {
             
             return `<a href="${url}" target="_blank" rel="noopener noreferrer">${displayText}</a>`;
         });
+        
+        return html;
     }
     
     // 詳細テキストを処理
     let descriptionHtml = '';
     if (event.description) {
-        descriptionHtml = `<p><strong>📝 詳細:</strong> ${convertUrlsToLinks(event.description)}</p>`;
+        descriptionHtml = `
+            <div class="detail-section">
+                <strong>📝 詳細:</strong>
+                <div class="detail-text">${convertTextToHtml(event.description)}</div>
+            </div>
+        `;
     }
     
     detailContent.innerHTML = `
-        <p><strong>📅 期間:</strong> ${dateDisplay}</p>
-        ${event.time ? `<p><strong>🕐 時間:</strong> ${event.time}</p>` : ''}
+        <div class="detail-section">
+            <strong>📅 期間:</strong> ${dateDisplay}
+        </div>
+        ${event.time ? `<div class="detail-section"><strong>🕐 時間:</strong> ${event.time}</div>` : ''}
         ${descriptionHtml}
         ${event.image ? `<img src="${event.image}" class="event-detail-image">` : ''}
     `;
