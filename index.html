@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>つくばイベントカレンダー</title>
+<title>Tsukuba Event Calendar</title>
 <style>
 * {
     margin: 0;
@@ -498,9 +498,52 @@ body {
     animation: spin 1s linear infinite;
 }
 
+.loading-spinner-large {
+    display: inline-block;
+    width: 60px;
+    height: 60px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* プリローダー */
+.preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.5s ease;
+}
+
+.preloader-content {
+    text-align: center;
+    color: white;
+}
+
+.preloader-content p {
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.preloader.fade-out {
+    opacity: 0;
+    pointer-events: none;
 }
 
 @media (max-width: 768px) {
@@ -698,6 +741,17 @@ body {
     body {
         overflow-x: hidden;
     }
+
+    /* モバイル用プリローダー */
+    .preloader-content p {
+        font-size: 16px;
+    }
+
+    .loading-spinner-large {
+        width: 50px;
+        height: 50px;
+        border-width: 3px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -741,11 +795,19 @@ body {
 <body>
 <div class="container">
 <div class="header">
-    <h1>📅 つくばイベントカレンダー</h1>
+    <h1>📅 Tsukuba Event Calendar</h1>
 </div>
 <div id="statusMessage" class="status" style="display: none;"></div>
 
-<div class="calendar-container">
+<!-- プリローダー -->
+<div id="preloader" class="preloader">
+    <div class="preloader-content">
+        <div class="loading-spinner-large"></div>
+        <p>データを読み込み中...</p>
+    </div>
+</div>
+
+<div class="calendar-container" id="calendarContainer" style="display: none;">
     <div class="calendar-header">
         <button class="nav-btn" onclick="previousMonth()">‹</button>
         <h2 class="calendar-title" id="currentMonth"></h2>
@@ -889,8 +951,26 @@ function isHoliday(date) {
     return holidays[dateStr] || null;
 }
 
+// プリローダー制御
+function showPreloader() {
+    document.getElementById('preloader').style.display = 'flex';
+    document.getElementById('calendarContainer').style.display = 'none';
+}
+
+function hidePreloader() {
+    const preloader = document.getElementById('preloader');
+    const calendarContainer = document.getElementById('calendarContainer');
+    
+    preloader.classList.add('fade-out');
+    setTimeout(() => {
+        preloader.style.display = 'none';
+        calendarContainer.style.display = 'block';
+    }, 500);
+}
+
 // API設定の初期化
 function initializeAPI() {
+    showPreloader();
     loadEventsFromAPI();
 }
 
@@ -924,8 +1004,11 @@ async function loadEventsFromAPI() {
         const data = await response.json();
         events = data.events || [];
         generateCalendar();
+        hidePreloader();
     } catch (error) {
         console.error('データの読み込みに失敗:', error);
+        showStatus('データの読み込みに失敗しました', 'error');
+        hidePreloader();
     }
 }
 
@@ -1462,7 +1545,6 @@ document.getElementById('eventStartDate').addEventListener('change', function() 
 // 初期化
 window.addEventListener('load', function() {
     initializeAPI();
-    generateCalendar();
 });
 </script>
 </body>
