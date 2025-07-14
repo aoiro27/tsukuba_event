@@ -208,6 +208,10 @@ body {
     min-height: auto;
 }
 
+.day-header.weekend {
+    background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+}
+
 .day-number {
     font-weight: 600;
     margin-bottom: 5px;
@@ -947,7 +951,11 @@ const holidays = {
 
 // 祝日かどうかをチェック
 function isHoliday(date) {
-    const dateStr = date.toISOString().split('T')[0];
+    // ローカル日付をYYYY-MM-DD形式に変換（時差を考慮）
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return holidays[dateStr] || null;
 }
 
@@ -1079,9 +1087,13 @@ function generateCalendar() {
     currentMonthElement.textContent = `${currentDate.getFullYear()}年 ${months[currentDate.getMonth()]}`;
 
     // 曜日ヘッダー
-    daysOfWeek.forEach(day => {
+    daysOfWeek.forEach((day, index) => {
         const dayElement = document.createElement('div');
         dayElement.className = 'day-header';
+        // 土日（0=日曜日, 6=土曜日）の場合はweekendクラスを追加
+        if (index === 0 || index === 6) {
+            dayElement.classList.add('weekend');
+        }
         dayElement.textContent = day;
         calendar.appendChild(dayElement);
     });
